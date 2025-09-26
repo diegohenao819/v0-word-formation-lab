@@ -70,14 +70,18 @@ export default function WordFormationTable() {
     }
   }, [studentName, answers])
 
+  // ✅ FIX: asegurar objeto por defecto en la fila
   const handleAnswerChange = (base: string, column: keyof StudentAnswer, value: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [base]: {
-        ...prev[base],
-        [column]: value,
-      },
-    }))
+    setAnswers((prev) => {
+      const prevBase: StudentAnswer = prev[base] ?? { N: "", V: "", Adj: "" }
+      return {
+        ...prev,
+        [base]: {
+          ...prevBase,
+          [column]: value,
+        },
+      }
+    })
   }
 
   const handleFocus = (base: string, column: keyof StudentAnswer) => {
