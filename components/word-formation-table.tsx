@@ -37,6 +37,7 @@ export default function WordFormationTable() {
   const [isChecked, setIsChecked] = useState(false)
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [emailStudentName, setEmailStudentName] = useState("")
+  const [mobileIndex, setMobileIndex] = useState(0)
 
   // Filter and shuffle data
   const filteredData = useMemo(() => {
@@ -46,6 +47,11 @@ export default function WordFormationTable() {
     }
     return isShuffled ? shuffleArray(filtered) : filtered
   }, [letterFilter, isShuffled])
+
+  // Reset mobile index when data changes
+  useEffect(() => {
+    setMobileIndex(0)
+  }, [filteredData])
 
   // Load progress from localStorage
   useEffect(() => {
@@ -298,8 +304,8 @@ ${nameToUse}`)
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-indigo-900 mb-2">Word Formation Lab</h1>
-            <p className="text-lg text-indigo-700">Complete the word forms: Noun (N), Verb (V), Adjective (Adj)</p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-indigo-900 mb-2">Word Formation Lab</h1>
+            <p className="text-sm sm:text-lg text-indigo-700">Complete the word forms: Noun (N), Verb (V), Adjective (Adj)</p>
           </div>
 
           {isCompleted && studentName && (
@@ -369,19 +375,20 @@ ${nameToUse}`)
 
               <div className="flex flex-wrap gap-2">
                 <Button onClick={checkAnswers} className="bg-indigo-600 hover:bg-indigo-700">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Check
+                  <CheckCircle className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Check</span>
                 </Button>
 
                 <Button onClick={showOneHint} variant="outline">
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  Show 1 hint
+                  <HelpCircle className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Show 1 hint</span>
                 </Button>
 
                 <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="bg-blue-50 hover:bg-blue-100 border-blue-200">
-                      📧 Send Email
+                      <span>📧</span>
+                      <span className="hidden sm:inline ml-1">Send Email</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -420,25 +427,27 @@ ${nameToUse}`)
                 </Dialog>
 
                 <Button onClick={resetAll} variant="outline">
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset
+                  <RotateCcw className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Reset</span>
                 </Button>
 
                 <Button onClick={() => exportResults("csv")} variant="outline">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
+                  <Download className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                  <span className="sm:hidden">CSV</span>
                 </Button>
 
                 <Button onClick={() => exportResults("json")} variant="outline">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export JSON
+                  <Download className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Export JSON</span>
+                  <span className="sm:hidden">JSON</span>
                 </Button>
 
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline">
-                      {isTeacherMode ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                      Teacher Mode
+                      {isTeacherMode ? <EyeOff className="w-4 h-4 sm:mr-2" /> : <Eye className="w-4 h-4 sm:mr-2" />}
+                      <span className="hidden sm:inline">Teacher Mode</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -492,8 +501,104 @@ ${nameToUse}`)
             </Card>
           )}
 
-          {/* Table */}
-          <Card>
+          {/* Mobile: one-word-at-a-time flashcard */}
+          <div className="sm:hidden">
+            {filteredData.length === 0 ? (
+              <Card><CardContent className="p-6 text-center text-gray-500">No words match this filter.</CardContent></Card>
+            ) : (() => {
+              const row = filteredData[mobileIndex]
+              const userAnswers = answers[row.base] || { N: "", V: "", Adj: "" }
+              const states = cellStates[row.base] || {}
+              const columns = [
+                { key: "N" as const, label: "Noun (N)", config: row.N },
+                { key: "V" as const, label: "Verb (V)", config: row.V },
+                { key: "Adj" as const, label: "Adjective (Adj)", config: row.Adj },
+              ].filter(({ key }) => visibleColumns[key])
+
+              return (
+                <Card>
+                  <CardContent className="p-5">
+                    {/* Progress bar */}
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                      <span>{mobileIndex + 1} / {filteredData.length}</span>
+                      <div className="flex-1 mx-3 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-500 rounded-full transition-all"
+                          style={{ width: `${((mobileIndex + 1) / filteredData.length) * 100}%` }}
+                        />
+                      </div>
+                      {states.N || states.V || states.Adj ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : null}
+                    </div>
+
+                    {/* Word */}
+                    <h2 className="text-3xl font-bold text-indigo-900 text-center py-4 mb-4 border-b">
+                      {row.base}
+                    </h2>
+
+                    {/* Inputs */}
+                    <div className="space-y-4">
+                      {columns.map(({ key, label, config }) => (
+                        <div key={key}>
+                          <label className="block text-sm font-semibold text-gray-600 mb-1">{label}</label>
+                          {config?.disabled ? (
+                            <div className="flex items-center gap-2">
+                              <Input disabled className="bg-gray-100 flex-1" />
+                              {config.note && (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Info className="w-4 h-4 text-gray-400 shrink-0" />
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>{config.note}</p></TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          ) : (
+                            <Input
+                              value={userAnswers[key]}
+                              onChange={(e) => handleAnswerChange(row.base, key, e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(e, row.base, key)}
+                              onFocus={() => handleFocus(row.base, key)}
+                              onBlur={handleBlur}
+                              placeholder="type here..."
+                              className={getCellStateColor(states[key] || "empty")}
+                              aria-label={`${label} for ${row.base}`}
+                            />
+                          )}
+                          {showAnswers && config && !config.disabled && (
+                            <div className="text-xs text-green-600 mt-1">{config.answers.join(", ")}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Navigation */}
+                    <div className="flex gap-3 mt-6">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setMobileIndex((i) => Math.max(0, i - 1))}
+                        disabled={mobileIndex === 0}
+                      >
+                        ← Prev
+                      </Button>
+                      <Button
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                        onClick={() => setMobileIndex((i) => Math.min(filteredData.length - 1, i + 1))}
+                        disabled={mobileIndex === filteredData.length - 1}
+                      >
+                        Next →
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })()}
+          </div>
+
+          {/* Desktop table layout */}
+          <Card className="hidden sm:block">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
