@@ -76,7 +76,6 @@ export default function WordFormationTable() {
     }
   }, [studentName, answers])
 
-  // ✅ FIX: asegurar objeto por defecto en la fila
   const handleAnswerChange = (base: string, column: keyof StudentAnswer, value: string) => {
     setAnswers((prev) => {
       const prevBase: StudentAnswer = prev[base] ?? { N: "", V: "", Adj: "" }
@@ -88,6 +87,27 @@ export default function WordFormationTable() {
         },
       }
     })
+
+    // Auto-validate: mark correct immediately, but never mark incorrect while typing
+    const row = DATA.find((r) => r.base === base)
+    if (!row) return
+    const cellConfig = row[column]
+    const state = validateAnswer(value, cellConfig)
+
+    if (state === "correct" || state === "alternative") {
+      setCellStates((prev) => ({
+        ...prev,
+        [base]: { ...prev[base], [column]: state },
+      }))
+      setIsChecked(true)
+    } else {
+      // Clear any previous correct/incorrect state while the student keeps typing
+      setCellStates((prev) => {
+        if (!prev[base]?.[column]) return prev
+        const { [column]: _, ...rest } = prev[base] as Record<string, CellState>
+        return { ...prev, [base]: rest }
+      })
+    }
   }
 
   const handleFocus = (base: string, column: keyof StudentAnswer) => {
@@ -506,7 +526,8 @@ ${nameToUse}`)
             {filteredData.length === 0 ? (
               <Card><CardContent className="p-6 text-center text-gray-500">No words match this filter.</CardContent></Card>
             ) : (() => {
-              const row = filteredData[mobileIndex]
+              const safeIndex = Math.min(mobileIndex, filteredData.length - 1)
+              const row = filteredData[safeIndex]
               const userAnswers = answers[row.base] || { N: "", V: "", Adj: "" }
               const states = cellStates[row.base] || {}
               const columns = [
@@ -520,14 +541,17 @@ ${nameToUse}`)
                   <CardContent className="p-5">
                     {/* Progress bar */}
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                      <span>{mobileIndex + 1} / {filteredData.length}</span>
+                      <span>{safeIndex + 1} / {filteredData.length}</span>
                       <div className="flex-1 mx-3 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-indigo-500 rounded-full transition-all"
-                          style={{ width: `${((mobileIndex + 1) / filteredData.length) * 100}%` }}
+                          style={{ width: `${((safeIndex + 1) / filteredData.length) * 100}%` }}
                         />
                       </div>
-                      {states.N || states.V || states.Adj ? (
+                      {columns.length > 0 && columns.every(({ key, config }) => {
+                        if (config?.disabled) return true
+                        return states[key] === "correct" || states[key] === "alternative"
+                      }) ? (
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       ) : null}
                     </div>
@@ -579,14 +603,14 @@ ${nameToUse}`)
                         variant="outline"
                         className="flex-1"
                         onClick={() => setMobileIndex((i) => Math.max(0, i - 1))}
-                        disabled={mobileIndex === 0}
+                        disabled={safeIndex === 0}
                       >
                         ← Prev
                       </Button>
                       <Button
                         className="flex-1 bg-indigo-600 hover:bg-indigo-700"
                         onClick={() => setMobileIndex((i) => Math.min(filteredData.length - 1, i + 1))}
-                        disabled={mobileIndex === filteredData.length - 1}
+                        disabled={safeIndex === filteredData.length - 1}
                       >
                         Next →
                       </Button>
