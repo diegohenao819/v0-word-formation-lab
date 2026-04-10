@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Info, Eye, EyeOff, Download, RotateCcw, CheckCircle, HelpCircle, Lightbulb } from "lucide-react"
 import { DATA } from "@/data/word-formation-data"
 import type { StudentAnswer, StudentProgress, CellState } from "@/types/word-formation"
-import { validateAnswer, getCellStateColor, getPlaceholderHint, shuffleArray, exportToCSV, exportToJSON } from "@/utils/word-formation"
+import { validateAnswer, getCellStateColor, shuffleArray, exportToCSV, exportToJSON } from "@/utils/word-formation"
 
 const TEACHER_PIN = "0426"
 
@@ -525,7 +525,7 @@ ${nameToUse}`)
                                 value={userAnswers[key]}
                                 onChange={(e) => handleAnswerChange(row.base, key, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(e, row.base, key)}
-                                placeholder={getPlaceholderHint(row.base, config?.answers)}
+                                placeholder={"type here..."}
                                 className={`flex-1 ${getCellStateColor(states[key] || "empty")}`}
                                 aria-label={`${label} for ${row.base}`}
                               />
@@ -624,7 +624,7 @@ ${nameToUse}`)
                                       value={userAnswers[col]}
                                       onChange={(e) => handleAnswerChange(row.base, col, e.target.value)}
                                       onKeyDown={(e) => handleKeyDown(e, row.base, col)}
-                                      placeholder={getPlaceholderHint(row.base, config?.answers)}
+                                      placeholder={"type here..."}
                                       className={`flex-1 ${getCellStateColor(states[col] || "empty")}`}
                                       aria-label={`${colLabels[col]} for ${row.base}`}
                                     />
