@@ -1,4 +1,4 @@
-import type { Row } from "@/types/word-formation"
+import type { Row } from "@/types/word-formation";
 
 export const DATA: Row[] = [
   // 1) achieve
@@ -17,7 +17,7 @@ export const DATA: Row[] = [
     V: { answers: ["agree"] },
     Adj: { answers: ["agreeable"] },
     Neg: { answers: ["disagreeable"] },
-    hint: "For opposition/contrast, dis- is common",
+    hint: "For opposition/contrast, dis- is common.",
     tags: ["dis-"],
   },
   // 3) challenge
@@ -161,7 +161,11 @@ export const DATA: Row[] = [
     N: { answers: ["intensity"] },
     V: { answers: ["intensify"] },
     Adj: { answers: ["intense"] },
-    Neg: { answers: [], disabled: true, note: "No natural prefixed negative (use ‘not intense’ / ‘mild’)"},
+    Neg: {
+      answers: [],
+      disabled: true,
+      note: "No natural prefixed negative (use ‘not intense’ / ‘mild’)",
+    },
     tags: [],
   },
   // 19) responsible
@@ -215,7 +219,7 @@ export const DATA: Row[] = [
     N: { answers: ["need", "necessity"] },
     V: { answers: ["need"] },
     Adj: { answers: ["necessary", "needed", "needful"] },
-    Neg: { answers: [ "unneeded", "needless"] },
+    Neg: { answers: ["unneeded", "needless"] },
     tags: ["un-", "-less"],
   },
   // 25) observe
@@ -269,7 +273,11 @@ export const DATA: Row[] = [
     N: { answers: ["simplicity"] },
     V: { answers: ["simplify"] },
     Adj: { answers: ["simple"] },
-    Neg: { answers: [], disabled: true, note: "Lexical antonym is ‘complex/complicated’" },
+    Neg: {
+      answers: [],
+      disabled: true,
+      note: "Lexical antonym is ‘complex/complicated’",
+    },
     tags: [],
   },
   // 31) stable
@@ -329,7 +337,7 @@ export const DATA: Row[] = [
   // 37) rely
   {
     base: "rely",
-    N: { answers: ["reliance","reliability"] },
+    N: { answers: ["reliance", "reliability"] },
     V: { answers: ["rely"] },
     Adj: { answers: ["reliable", "reliant"] },
     Neg: { answers: ["unreliable"] },
@@ -454,4 +462,4 @@ export const DATA: Row[] = [
     Neg: { answers: ["discouraging"] },
     tags: ["dis-"],
   },
-]
+];
