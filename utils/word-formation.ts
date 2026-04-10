@@ -44,6 +44,39 @@ export function getCellStateColor(state: CellState): string {
   }
 }
 
+/**
+ * Generate a placeholder hint from the base word and correct answer.
+ * Shows the suffix (-ment), prefix (be-), or a partial hint for irregular forms.
+ */
+export function getPlaceholderHint(base: string, answers?: string[]): string {
+  if (!answers || answers.length === 0) return ""
+  const answer = answers[0]
+  const baseLower = base.toLowerCase()
+  const answerLower = answer.toLowerCase()
+
+  // Same word
+  if (baseLower === answerLower) return `= ${base}`
+
+  // Suffix derivation: answer starts with a stem of the base
+  for (let cut = 0; cut <= 2; cut++) {
+    const stem = baseLower.substring(0, baseLower.length - cut)
+    if (stem.length >= 3 && answerLower.startsWith(stem)) {
+      return `-${answer.substring(stem.length)}`
+    }
+  }
+
+  // Prefix derivation: answer ends with a stem of the base
+  for (let cut = 0; cut <= 2; cut++) {
+    const stem = baseLower.substring(cut)
+    if (stem.length >= 3 && answerLower.endsWith(stem)) {
+      return `${answer.substring(0, answer.length - stem.length)}-`
+    }
+  }
+
+  // Fallback: first letter + ... + last 3 chars
+  return `${answer[0]}...${answer.slice(-3)}`
+}
+
 export function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {

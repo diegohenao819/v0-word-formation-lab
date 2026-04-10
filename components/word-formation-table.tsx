@@ -11,10 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Info, Eye, EyeOff, Download, RotateCcw, CheckCircle, HelpCircle } from "lucide-react"
+import { Info, Eye, EyeOff, Download, RotateCcw, CheckCircle, HelpCircle, Lightbulb } from "lucide-react"
 import { DATA } from "@/data/word-formation-data"
 import type { StudentAnswer, StudentProgress, CellState } from "@/types/word-formation"
-import { validateAnswer, getCellStateColor, shuffleArray, exportToCSV, exportToJSON } from "@/utils/word-formation"
+import { validateAnswer, getCellStateColor, getPlaceholderHint, shuffleArray, exportToCSV, exportToJSON } from "@/utils/word-formation"
 
 const TEACHER_PIN = "0426"
 
@@ -24,8 +24,6 @@ export default function WordFormationTable() {
   const [cellStates, setCellStates] = useState<Record<string, Record<string, CellState>>>({})
   const [isShuffled, setIsShuffled] = useState(false)
   const [letterFilter, setLetterFilter] = useState("All")
-  const [showHint, setShowHint] = useState("")
-  const [focusedCell, setFocusedCell] = useState<{ base: string; column: keyof StudentAnswer } | null>(null)
   const [isTeacherMode, setIsTeacherMode] = useState(false)
   const [teacherPin, setTeacherPin] = useState("")
   const [showAnswers, setShowAnswers] = useState(false)
@@ -110,13 +108,29 @@ export default function WordFormationTable() {
     }
   }
 
-  const handleFocus = (base: string, column: keyof StudentAnswer) => {
-    console.log("[v0] Focus set to:", base, column)
-    setFocusedCell({ base, column })
-  }
+  const revealNextLetter = (base: string, column: keyof StudentAnswer) => {
+    const row = DATA.find((r) => r.base === base)
+    if (!row) return
+    const config = row[column]
+    if (!config || config.disabled || !config.answers || config.answers.length === 0) return
 
-  const handleBlur = () => {
-    // The focused cell will be cleared when user clicks on another cell
+    const correctAnswer = config.answers[0]
+    const currentAnswer = answers[base]?.[column] || ""
+
+    // Find how many leading characters already match
+    let matchLen = 0
+    for (let i = 0; i < correctAnswer.length; i++) {
+      if (i < currentAnswer.length && currentAnswer[i].toLowerCase() === correctAnswer[i].toLowerCase()) {
+        matchLen++
+      } else {
+        break
+      }
+    }
+
+    // Type the next correct letter
+    if (matchLen < correctAnswer.length) {
+      handleAnswerChange(base, column, correctAnswer.substring(0, matchLen + 1))
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, base: string, column: keyof StudentAnswer) => {
@@ -159,66 +173,10 @@ export default function WordFormationTable() {
     setIsChecked(true)
   }
 
-  const showOneHint = () => {
-    console.log("[v0] showOneHint called, focusedCell:", focusedCell)
-
-    if (!focusedCell) {
-      setShowHint("Please click on a cell first to get a hint for that word.")
-      console.log("[v0] No focused cell, showing generic message")
-      return
-    }
-
-    const { base, column } = focusedCell
-    const row = filteredData.find((r) => r.base === base)
-    console.log("[v0] Found row:", row, "for base:", base, "column:", column)
-
-    if (!row || !row[column] || row[column]?.disabled) {
-      setShowHint("No hint available for this cell.")
-      console.log("[v0] No row or disabled cell")
-      return
-    }
-
-    const cellConfig = row[column]
-    if (!cellConfig?.answers || cellConfig.answers.length === 0) {
-      setShowHint("No hint available for this cell.")
-      console.log("[v0] No answers available")
-      return
-    }
-
-    // Get the first correct answer
-    const correctAnswer = cellConfig.answers[0]
-    const userAnswer = answers[base]?.[column] || ""
-    console.log("[v0] Correct answer:", correctAnswer, "User answer:", userAnswer)
-
-    // Find the first letter that the user hasn't typed correctly
-    let hintLetter = ""
-    let hintPosition = 0
-
-    for (let i = 0; i < correctAnswer.length; i++) {
-      if (i >= userAnswer.length || userAnswer[i].toLowerCase() !== correctAnswer[i].toLowerCase()) {
-        hintLetter = correctAnswer[i]
-        hintPosition = i + 1
-        break
-      }
-    }
-
-    if (hintLetter) {
-      const hintMessage = `Letter ${hintPosition}: "${hintLetter}" (for ${base} → ${column})`
-      setShowHint(hintMessage)
-      console.log("[v0] Setting hint:", hintMessage)
-    } else {
-      const hintMessage = `You're on the right track! (for ${base} → ${column})`
-      setShowHint(hintMessage)
-      console.log("[v0] User is correct, showing encouragement:", hintMessage)
-    }
-  }
-
   const resetAll = () => {
     setAnswers({})
     setCellStates({})
-    setShowHint("")
     setIsChecked(false)
-    setFocusedCell(null)
   }
 
   const calculateScore = () => {
@@ -399,11 +357,6 @@ ${nameToUse}`)
                   <span className="hidden sm:inline">Check</span>
                 </Button>
 
-                <Button onClick={showOneHint} variant="outline">
-                  <HelpCircle className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Show 1 hint</span>
-                </Button>
-
                 <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="bg-blue-50 hover:bg-blue-100 border-blue-200">
@@ -509,18 +462,6 @@ ${nameToUse}`)
             </div>
           )}
 
-          {/* Hint */}
-          {showHint && (
-            <Card className="mb-4 border-amber-200 bg-amber-50">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2" aria-live="polite">
-                  <HelpCircle className="w-5 h-5 text-amber-600" />
-                  <span className="text-amber-800 font-medium">Hint: {showHint}</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Mobile: one-word-at-a-time flashcard */}
           <div className="sm:hidden">
             {filteredData.length === 0 ? (
@@ -579,16 +520,25 @@ ${nameToUse}`)
                               )}
                             </div>
                           ) : (
-                            <Input
-                              value={userAnswers[key]}
-                              onChange={(e) => handleAnswerChange(row.base, key, e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(e, row.base, key)}
-                              onFocus={() => handleFocus(row.base, key)}
-                              onBlur={handleBlur}
-                              placeholder="type here..."
-                              className={getCellStateColor(states[key] || "empty")}
-                              aria-label={`${label} for ${row.base}`}
-                            />
+                            <div className="flex items-center gap-1.5">
+                              <Input
+                                value={userAnswers[key]}
+                                onChange={(e) => handleAnswerChange(row.base, key, e.target.value)}
+                                onKeyDown={(e) => handleKeyDown(e, row.base, key)}
+                                placeholder={getPlaceholderHint(row.base, config?.answers)}
+                                className={`flex-1 ${getCellStateColor(states[key] || "empty")}`}
+                                aria-label={`${label} for ${row.base}`}
+                              />
+                              {states[key] !== "correct" && states[key] !== "alternative" && (
+                                <button
+                                  onClick={() => revealNextLetter(row.base, key)}
+                                  className="shrink-0 p-2 text-amber-400 hover:text-amber-600 active:scale-95 transition-all"
+                                  aria-label={`Hint for ${label} of ${row.base}`}
+                                >
+                                  <Lightbulb className="w-5 h-5" />
+                                </button>
+                              )}
+                            </div>
                           )}
                           {showAnswers && config && !config.disabled && (
                             <div className="text-xs text-green-600 mt-1">{config.answers.join(", ")}</div>
@@ -649,101 +599,52 @@ ${nameToUse}`)
                         <tr key={`${row.base}-${index}`} className="border-b hover:bg-gray-50">
                           <td className="px-4 py-3 font-medium text-gray-900">{row.base}</td>
 
-                          {visibleColumns.N && (
-                            <td className="px-4 py-3">
-                              {row.N?.disabled ? (
-                                <div className="flex items-center space-x-2">
-                                  <Input disabled className="bg-gray-100" />
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <Info className="w-4 h-4 text-gray-400" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{row.N.note}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              ) : (
-                                <Input
-                                  value={userAnswers.N}
-                                  onChange={(e) => handleAnswerChange(row.base, "N", e.target.value)}
-                                  onKeyDown={(e) => handleKeyDown(e, row.base, "N")}
-                                  onFocus={() => handleFocus(row.base, "N")}
-                                  onBlur={handleBlur}
-                                  placeholder="type here..."
-                                  className={`${getCellStateColor(states.N || "empty")}`}
-                                  aria-label={`Noun for ${row.base}`}
-                                />
-                              )}
-                              {showAnswers && row.N && (
-                                <div className="text-xs text-green-600 mt-1">{row.N.answers.join(", ")}</div>
-                              )}
-                            </td>
-                          )}
-
-                          {visibleColumns.V && (
-                            <td className="px-4 py-3">
-                              {row.V?.disabled ? (
-                                <div className="flex items-center space-x-2">
-                                  <Input disabled className="bg-gray-100" />
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <Info className="w-4 h-4 text-gray-400" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{row.V.note}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              ) : (
-                                <Input
-                                  value={userAnswers.V}
-                                  onChange={(e) => handleAnswerChange(row.base, "V", e.target.value)}
-                                  onKeyDown={(e) => handleKeyDown(e, row.base, "V")}
-                                  onFocus={() => handleFocus(row.base, "V")}
-                                  onBlur={handleBlur}
-                                  placeholder="type here..."
-                                  className={`${getCellStateColor(states.V || "empty")}`}
-                                  aria-label={`Verb for ${row.base}`}
-                                />
-                              )}
-                              {showAnswers && row.V && (
-                                <div className="text-xs text-green-600 mt-1">{row.V.answers.join(", ")}</div>
-                              )}
-                            </td>
-                          )}
-
-                          {visibleColumns.Adj && (
-                            <td className="px-4 py-3">
-                              {row.Adj?.disabled ? (
-                                <div className="flex items-center space-x-2">
-                                  <Input disabled className="bg-gray-100" />
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <Info className="w-4 h-4 text-gray-400" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{row.Adj.note}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              ) : (
-                                <Input
-                                  value={userAnswers.Adj}
-                                  onChange={(e) => handleAnswerChange(row.base, "Adj", e.target.value)}
-                                  onKeyDown={(e) => handleKeyDown(e, row.base, "Adj")}
-                                  onFocus={() => handleFocus(row.base, "Adj")}
-                                  onBlur={handleBlur}
-                                  placeholder="type here..."
-                                  className={`${getCellStateColor(states.Adj || "empty")}`}
-                                  aria-label={`Adjective for ${row.base}`}
-                                />
-                              )}
-                              {showAnswers && row.Adj && (
-                                <div className="text-xs text-green-600 mt-1">{row.Adj.answers.join(", ")}</div>
-                              )}
-                            </td>
-                          )}
+                          {(["N", "V", "Adj"] as const).filter((col) => visibleColumns[col]).map((col) => {
+                            const config = row[col]
+                            const colLabels = { N: "Noun", V: "Verb", Adj: "Adjective" }
+                            return (
+                              <td key={col} className="px-4 py-3">
+                                {config?.disabled ? (
+                                  <div className="flex items-center space-x-2">
+                                    <Input disabled className="bg-gray-100" />
+                                    {config.note && (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <Info className="w-4 h-4 text-gray-400" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{config.note}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      value={userAnswers[col]}
+                                      onChange={(e) => handleAnswerChange(row.base, col, e.target.value)}
+                                      onKeyDown={(e) => handleKeyDown(e, row.base, col)}
+                                      placeholder={getPlaceholderHint(row.base, config?.answers)}
+                                      className={`flex-1 ${getCellStateColor(states[col] || "empty")}`}
+                                      aria-label={`${colLabels[col]} for ${row.base}`}
+                                    />
+                                    {states[col] !== "correct" && states[col] !== "alternative" && (
+                                      <button
+                                        onClick={() => revealNextLetter(row.base, col)}
+                                        className="shrink-0 text-amber-400 hover:text-amber-600 transition-colors"
+                                        aria-label={`Hint for ${colLabels[col]} of ${row.base}`}
+                                      >
+                                        <Lightbulb className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                {showAnswers && config && (
+                                  <div className="text-xs text-green-600 mt-1">{config.answers.join(", ")}</div>
+                                )}
+                              </td>
+                            )
+                          })}
                         </tr>
                       )
                     })}
